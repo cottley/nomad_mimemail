@@ -812,11 +812,6 @@ class nomad_mimemail
 	 */
 	function _build_body()
 	{
-		$bit_mode='7bit';
-		if ($this->charset=='UTF-8')
-		{
-			$bit_mode='quoted-printable';
-		}
 		switch ($this->_parse_elements()){
 			case 1: // Plain Text
 				$this->_build_header("Content-Type: text/plain; charset=\"$this->charset\"");
@@ -826,11 +821,11 @@ class nomad_mimemail
 				$this->_build_header("Content-Type: multipart/alternative; boundary=\"$this->boundary_alt\"");
 				$this->mail_body .= "--" . $this->boundary_alt . BR;
 				$this->mail_body .= "Content-Type: text/plain; charset=\"$this->charset\"" . BR;
-				$this->mail_body .= "Content-Transfer-Encoding: $bit_mode" . BR . BR;
+				$this->mail_body .= "Content-Transfer-Encoding: 7bit" . BR . BR;
 				$this->mail_body .= $this->mail_text . BR . BR;
 				$this->mail_body .= "--" . $this->boundary_alt . BR;
 				$this->mail_body .= "Content-Type: text/html; charset=\"$this->charset\"" . BR;
-				$this->mail_body .= "Content-Transfer-Encoding: $bit_mode" . BR . BR;
+				$this->mail_body .= "Content-Transfer-Encoding: 7bit" . BR . BR;
 				$this->mail_body .= $this->mail_html . BR;
 				$this->mail_body .= "--" . $this->boundary_alt . "--" . BR;
 				break;
@@ -838,7 +833,7 @@ class nomad_mimemail
 				$this->_build_header("Content-Type: multipart/mixed; boundary=\"$this->boundary_mix\"");
 				$this->mail_body .= "--" . $this->boundary_mix . BR;
 				$this->mail_body .= "Content-Type: text/plain; charset=\"$this->charset\"" . BR;
-				$this->mail_body .= "Content-Transfer-Encoding: $bit_mode" . BR . BR;
+				$this->mail_body .= "Content-Transfer-Encoding: 7bit" . BR . BR;
 				$this->mail_body .= $this->mail_text . BR . BR;
 				foreach($this->attachments as $value){
 					$this->mail_body .= "--" . $this->boundary_mix . BR;
@@ -877,11 +872,11 @@ class nomad_mimemail
 				$this->mail_body .= "Content-Type: multipart/alternative; boundary=\"$this->boundary_alt\"" . BR . BR;
 				$this->mail_body .= "--" . $this->boundary_alt . BR;
 				$this->mail_body .= "Content-Type: text/plain; charset=\"$this->charset\"" . BR;
-				$this->mail_body .= "Content-Transfer-Encoding: $bit_mode" . BR . BR;
+				$this->mail_body .= "Content-Transfer-Encoding: 7bit" . BR . BR;
 				$this->mail_body .= $this->mail_text . BR . BR;
 				$this->mail_body .= "--" . $this->boundary_alt . BR;
 				$this->mail_body .= "Content-Type: text/html; charset=\"$this->charset\"" . BR;
-				$this->mail_body .= "Content-Transfer-Encoding: $bit_mode" . BR . BR;
+				$this->mail_body .= "Content-Transfer-Encoding: 7bit" . BR . BR;
 				$this->mail_body .= $this->mail_html . BR . BR;
 				$this->mail_body .= "--" . $this->boundary_alt . "--" . BR . BR;
 				foreach($this->attachments as $value){
@@ -904,11 +899,11 @@ class nomad_mimemail
 				$this->mail_body .= "Content-Type: multipart/alternative; boundary=\"$this->boundary_alt\"" . BR . BR;
 				$this->mail_body .= "--" . $this->boundary_alt . BR;
 				$this->mail_body .= "Content-Type: text/plain; charset=\"$this->charset\"" . BR;
-				$this->mail_body .= "Content-Transfer-Encoding: $bit_mode" . BR . BR;
+				$this->mail_body .= "Content-Transfer-Encoding: 7bit" . BR . BR;
 				$this->mail_body .= $this->mail_text . BR . BR;
 				$this->mail_body .= "--" . $this->boundary_alt . BR;
 				$this->mail_body .= "Content-Type: text/html; charset=\"$this->charset\"" . BR;
-				$this->mail_body .= "Content-Transfer-Encoding: $bit_mode" . BR . BR;
+				$this->mail_body .= "Content-Transfer-Encoding: 7bit" . BR . BR;
 				$this->mail_body .= $this->mail_html . BR . BR;
 				$this->mail_body .= "--" . $this->boundary_alt . "--" . BR . BR;
 				foreach($this->attachments as $value){
@@ -976,7 +971,7 @@ class nomad_mimemail
 		if (!empty($this->mail_html)){
 			$this->mail_type = $this->mail_type + 2; // HTML
 			if (empty($this->mail_text)){
-				$this->mail_text = strip_tags(eregi_replace("<br>", BR, $this->mail_html));
+				$this->mail_text = strip_tags(preg_replace("/<br>/i", BR, $this->mail_html));
 				$this->mail_type = $this->mail_type + 1; // Plain Text
 			}
 		}
@@ -1002,9 +997,9 @@ class nomad_mimemail
 	{
 		if ($this->attachments_index != 0){
 			foreach($this->attachments as $key => $value){
-				if (preg_match('/(css|image)/i', $value['type']) && preg_match('/\s(background|href|src)\s*=\s*[\"|\'](' . $value['name'] . ')[\"|\'].*>/is', $this->mail_html)) {
+				if (preg_match('/(css|image)/i', $value['type']) && preg_match('~\s(background|href|src)\s*=\s*[\"|\'](' . $value['name'] . ')[\"|\'].*>~is', $this->mail_html)) {
 					$img_id = md5($value['name']) . ".nomad@mimemail";
-					$this->mail_html = preg_replace('/\s(background|href|src)\s*=\s*[\"|\'](' . $value['name'] . ')[\"|\']/is', ' \\1="cid:' . $img_id . '"', $this->mail_html);
+					$this->mail_html = preg_replace('~\s(background|href|src)\s*=\s*[\"|\'](' . $value['name'] . ')[\"|\']~is', ' \\1="cid:' . $img_id . '"', $this->mail_html);
 					$this->attachments[$key]['embedded'] = $img_id;
 					$this->attachments_img[] = $value['name'];
 				}
@@ -1022,7 +1017,8 @@ class nomad_mimemail
 	 */
 	function _validate_mail($mail)
 	{
-		if (ereg('^[-!#$%&\'*+\\./0-9=?A-Z^_`a-z{|}~]+'.'@'.'[-!#$%&\'*+\\/0-9=?A-Z^_`a-z{|}~]+\.'.'[-!#$%&\'*+\\./0-9=?A-Z^_`a-z{|}~]+$',$mail)){
+		// Updated to use preg_match and expression from https://emailregex.com/
+		if (preg_match('/^(?!(?:(?:\x22?\x5C[\x00-\x7E]\x22?)|(?:\x22?[^\x5C\x22]\x22?)){255,})(?!(?:(?:\x22?\x5C[\x00-\x7E]\x22?)|(?:\x22?[^\x5C\x22]\x22?)){65,}@)(?:(?:[\x21\x23-\x27\x2A\x2B\x2D\x2F-\x39\x3D\x3F\x5E-\x7E]+)|(?:\x22(?:[\x01-\x08\x0B\x0C\x0E-\x1F\x21\x23-\x5B\x5D-\x7F]|(?:\x5C[\x00-\x7F]))*\x22))(?:\.(?:(?:[\x21\x23-\x27\x2A\x2B\x2D\x2F-\x39\x3D\x3F\x5E-\x7E]+)|(?:\x22(?:[\x01-\x08\x0B\x0C\x0E-\x1F\x21\x23-\x5B\x5D-\x7F]|(?:\x5C[\x00-\x7F]))*\x22)))*@(?:(?:(?!.*[^.]{64,})(?:(?:(?:xn--)?[a-z0-9]+(?:-[a-z0-9]+)*\.){1,126}){1,}(?:(?:[a-z][a-z0-9]*)|(?:(?:xn--)[a-z0-9]+))(?:-[a-z0-9]+)*)|(?:\[(?:(?:IPv6:(?:(?:[a-f0-9]{1,4}(?::[a-f0-9]{1,4}){7})|(?:(?!(?:.*[a-f0-9][:\]]){7,})(?:[a-f0-9]{1,4}(?::[a-f0-9]{1,4}){0,5})?::(?:[a-f0-9]{1,4}(?::[a-f0-9]{1,4}){0,5})?)))|(?:(?:IPv6:(?:(?:[a-f0-9]{1,4}(?::[a-f0-9]{1,4}){5}:)|(?:(?!(?:.*[a-f0-9]:){5,})(?:[a-f0-9]{1,4}(?::[a-f0-9]{1,4}){0,3})?::(?:[a-f0-9]{1,4}(?::[a-f0-9]{1,4}){0,3}:)?)))?(?:(?:25[0-5])|(?:2[0-4][0-9])|(?:1[0-9]{2})|(?:[1-9]?[0-9]))(?:\.(?:(?:25[0-5])|(?:2[0-4][0-9])|(?:1[0-9]{2})|(?:[1-9]?[0-9]))){3}))\]))$/iD', $mail)) {
 			return true;
 		}
 		return $this->_debug(4, $mail);
@@ -1187,6 +1183,7 @@ class nomad_mimemail
 	 */
 	function _smtp_send()
 	{
+		
 		if ($this->_open_smtp_conn()){
 			if (!$this->_send_smtp_command("helo {$this->smtp_host}", array(220, 250, 354))){return false;}
 			if(!empty($this->smtp_user) && !empty($this->smtp_pass)){
